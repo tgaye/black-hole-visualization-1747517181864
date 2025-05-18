@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black Hole Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.8.0/lib/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Orbitron', 'Segoe UI', sans-serif;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            z-index: 100;
+            max-width: 250px;
+        }
+        #toggle-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 101;
+            font-family: 'Orbitron', 'Segoe UI', sans-serif;
+        }
+        .slider-container {
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 5px 10px;
+            margin-top: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+
+<base target="_self">
+
+
+    <div id="controls">
+        <h3>Black Hole Controls</h3>
+        <div class="slider-container">
+            <label for="spin">Spin Speed</label>
+            <input type="range" id="spin" min="0" max="2" step="0.01" value="1">
+        </div>
+        <div class="slider-container">
+            <label for="disk-brightness">Disk Brightness</label>
+            <input type="range" id="disk-brightness" min="50" max="200" value="150">
+        </div>
+        <div class="slider-container">
+            <label for="particles">Particle Count</label>
+            <input type="range" id="particles" min="100" max="2000" step="10" value="800">
+        </div>
+        <button id="reset">Reset View</button>
+        <button id="randomize">Randomize Colors</button>
+    </div>
+    <button id="toggle-controls">Hide Controls</button>
+
+    <script>
+        const sketch = (p) => {
+            let particles = [];
+            let maxParticles = 800;
+            let blackHoleSize = 100;
+            let spinSpeed = 1;
+            let diskBrightness = 150;
+            let colorPalette = [];
+            let time = 0;
+            let showControls = true;
+            let controlsHidden = false;
+
+            p.preload = () => {
+                // Load any assets here if needed
+            };
+
+            p.setup = () => {
+                p.createCanvas(p.windowWidth, p.windowHeight);
+                p.colorMode(p.HSB, 360, 100, 100, 1);
+                p.noStroke();
+                generateColorPalette();
+                createParticles();
+                
+                // Load control state from localStorage
+                if (localStorage.getItem('controlsHidden')) {
+                    controlsHidden = localStorage.getItem('controlsHidden') === 'true';
+                    document.getElementById('controls').style.display = controlsHidden ? 'none' : 'block';
+                    document.getElementById('toggle-controls').textContent = controlsHidden ? 'Show Controls' : 'Hide Controls';
+                }
+                
+                // Setup event listeners for controls
+                document.getElementById('spin').addEventListener('input', (e) => {
+                    spinSpeed = parseFloat(e.target.value);
+                });
+                document.getElementById('disk-brightness').addEventListener('input', (e) => {
+                    diskBrightness = parseInt(e.target.value);
+                });
+                document.getElementById('particles').addEventListener('input', (e) => {
+                    maxParticles = parseInt(e.target.value);
+                    adjustParticleCount();
+                });
+                document.getElementById('reset').addEventListener('click', () => {
+                    p.translate(p.width/2, p.height/2);
+                    p.rotate(0);
+                });
+                document.getElementById('randomize').addEventListener('click', () => {
+                    generateColorPalette();
+                });
+                document.getElementById('toggle-controls').addEventListener('click', () => {
+                    controlsHidden = !controlsHidden;
+                    document.getElementById('controls').style.display = controlsHidden ? 'none' : 'block';
+                    document.getElementById('toggle-controls').textContent = controlsHidden ? 'Show Controls' : 'Hide Controls';
+                    localStorage.setItem('controlsHidden', controlsHidden);
+                });
+            };
+
+            function generateColorPalette() {
+                colorPalette = [];
+                const baseHue = p.random(360);
+                for (let i = 0; i < 5; i++) {
+                    const hue = (baseHue + p.random(-30, 30)) % 360;
+                    const sat = p.random(70, 100);
+                    const bri = p.random(70, 100);
+                    colorPalette.push(p.color(hue, sat, bri));
+                }
+            }
+
+            function createParticles() {
+                particles = [];
+                for (let i = 0; i < maxParticles; i++) {
+                    particles.push({
+                        angle: p.random(p.TWO_PI),
+                        distance: p.random(blackHoleSize * 1.5, p.min(p.width, p.height) * 0.4),
+                        speed: p.random(0.001, 0.01),
+                        size: p.random(1, 3),
+                        colorIndex: p.floor(p.random(colorPalette.length))
+                    });
+                }
+            }
+
+            function adjustParticleCount() {
+                if (maxParticles > particles.length) {
+                    // Add particles
+                    for (let i = particles.length; i < maxParticles; i++) {
+                        particles.push({
+                            angle: p.random(p.TWO_PI),
+                            distance: p.random(blackHoleSize * 1.5, p.min(p.width, p.height) * 0.4),
+                            speed: p.random(0.001, 0.01),
+                            size: p.random(1, 3),
+                            colorIndex: p.floor(p.random(colorPalette.length))
+                        });
+                    }
+                } else {
+                    // Remove particles
+                    particles.length = maxParticles;
+                }
+            }
+
+            p.draw = () => {
+                p.background(0);
+                time += 0.01;
+
+                // Center the coordinate system
+                p.translate(p.width/2, p.height/2);
+
+                // Draw gravitational lensing effect
+                drawLensingEffect();
+
+                // Draw accretion disk
+                drawAccretionDisk();
+
+                // Draw event horizon
+                drawEventHorizon();
+
+                // Draw particles
+                drawParticles();
+
+                // Draw gravitational distortion based on mouse position
+                if (p.mouseX > 0 && p.mouseY > 0) {
+                    drawMouseDistortion();
+                }
+            };
+
+            function drawLensingEffect() {
+                const distortionStrength = 0.3;
+                const distortionSize = blackHoleSize * 3;
+                
+                for (let y = -distortionSize; y <= distortionSize; y += 10) {
+                    for (let x = -distortionSize; x <= distortionSize; x += 10) {
+                        const dist = p.dist(x, y, 0, 0);
+                        if (dist < distortionSize) {
+                            const angle = p.atan2(y, x);
+                            const distortion = (1 - dist/distortionSize) * distortionStrength;
+                            const newX = x + p.cos(angle) * distortion * 50;
+                            const newY = y + p.sin(angle) * distortion * 50;
+                            
+                            const col = p.map(dist, 0, distortionSize, 255, 0);
+                            p.stroke(col, 50);
+                            p.strokeWeight(0.5);
+                            p.line(x, y, newX, newY);
+                        }
+                    }
+                }
+            }
+
+            function drawAccretionDisk() {
+                const diskThickness = blackHoleSize * 0.3;
+                const innerRadius = blackHoleSize * 1.2;
+                const outerRadius = p.min(p.width, p.height) * 0.4;
+                
+                for (let r = innerRadius; r < outerRadius; r += 5) {
+                    const noiseVal = p.noise(r * 0.01, time * 0.5);
+                    const brightness = p.map(r, innerRadius, outerRadius, diskBrightness, diskBrightness * 0.7);
+                    const hueShift = p.map(r, innerRadius, outerRadius, 0, 60);
+                    
+                    for (let angle = 0; angle < p.TWO_PI; angle += p.PI/36) {
+                        const x = r * p.cos(angle + time * spinSpeed * (1 - r/outerRadius));
+                        const y = r * p.sin(angle + time * spinSpeed * (1 - r/outerRadius));
+                        
+                        const col = colorPalette[p.floor(noiseVal * colorPalette.length) % colorPalette.length];
+                        p.fill(p.hue(col), p.saturation(col), brightness * noiseVal);
+                        p.circle(x, y, diskThickness * (0.5 + noiseVal * 0.5));
+                    }
+                }
+            }
+
+            function drawEventHorizon() {
+                // Schwarzschild radius (black hole)
+                p.fill(0);
+                p.circle(0, 0, blackHoleSize * 2);
+                
+                // Photon sphere
+                p.noFill();
+                p.stroke(255, 50);
+                p.strokeWeight(1);
+                p.circle(0, 0, blackHoleSize * 3);
+            }
+
+            function drawParticles() {
+                for (let i = 0; i < particles.length; i++) {
+                    const particle = particles[i];
+                    particle.angle += particle.speed * spinSpeed;
+                    
+                    const x = particle.distance * p.cos(particle.angle);
+                    const y = particle.distance * p.sin(particle.angle);
+                    
+                    // Apply gravitational distortion
+                    const distToCenter = p.dist(x, y, 0, 0);
+                    const distortion = p.map(distToCenter, blackHoleSize * 1.5, 0, 0, 1, true);
+                    const angleToCenter = p.atan2(y, x);
+                    
+                    const distortedX = x + p.cos(angleToCenter) * distortion * 20;
+                    const distortedY = y + p.sin(angleToCenter) * distortion * 20;
+                    
+                    const col = colorPalette[particle.colorIndex];
+                    p.fill(col);
+                    p.circle(distortedX, distortedY, particle.size);
+                }
+            }
+
+            function drawMouseDistortion() {
+                const mx = p.mouseX - p.width/2;
+                const my = p.mouseY - p.height/2;
+                const mouseDist = p.dist(0, 0, mx, my);
+                
+                if (mouseDist < p.min(p.width, p.height) * 0.5) {
+                    const strength = p.map(mouseDist, 0, p.min(p.width, p.height) * 0.5, 0.2, 0);
+                    
+                    p.push();
+                    p.translate(mx, my);
+                    p.scale(1 + strength);
+                    p.translate(-mx, -my);
+                    
+                    p.noFill();
+                    p.stroke(255, 100, 100, 50);
+                    p.strokeWeight(1);
+                    p.circle(mx, my, blackHoleSize * 2);
+                    p.pop();
+                }
+            }
+
+            p.windowResized = () => {
+                p.resizeCanvas(p.windowWidth, p.windowHeight);
+            };
+        };
+
+        new p5(sketch);
+    </script>
+
+              
+          
+                
+          
+              
